@@ -33,6 +33,8 @@ export function parseGPX(gpxContent: string): GPXData {
 export function calculateStats(trackPoints: TrackPoint[]) {
   if (trackPoints.length === 0) return null
   
+  console.log('Calculating stats for', trackPoints.length, 'points')
+  
   let totalDistance = 0
   let maxSpeed = 0
   let totalSpeed = 0

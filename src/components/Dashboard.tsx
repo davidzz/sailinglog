@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
 import { SailingSession } from '@/types'
 import { SessionCard } from './SessionCard'
 import { GPXUpload } from './GPXUpload'
 
 export function Dashboard() {
-  const { data: session } = useSession()
+  // Mock user for demo purposes
+  const session = { user: { name: 'Demo User', email: 'demo@example.com', image: null } }
   const [sessions, setSessions] = useState<SailingSession[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload] = useState(false)
@@ -59,20 +59,8 @@ export function Dashboard() {
               </button>
               
               <div className="flex items-center space-x-3">
-                {session?.user?.image && (
-                  <img
-                    src={session.user.image}
-                    alt={session?.user?.name || ''}
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
                 <span className="text-gray-700">{session?.user?.name}</span>
-                <button
-                  onClick={() => signOut()}
-                  className="text-gray-500 hover:text-gray-700 text-sm"
-                >
-                  Sign out
-                </button>
+                <span className="text-xs text-gray-500">(Demo Mode)</span>
               </div>
             </div>
           </div>

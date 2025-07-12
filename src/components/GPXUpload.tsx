@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useSession } from 'next-auth/react'
 import { parseGPX, calculateStats } from '@/lib/gpx-parser'
 
 interface GPXUploadProps {
@@ -9,12 +8,11 @@ interface GPXUploadProps {
 }
 
 export function GPXUpload({ onUploadSuccess }: GPXUploadProps) {
-  const { data: session } = useSession()
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
 
   const handleFileUpload = async (file: File) => {
-    if (!session?.user?.id) return
+    // Skip auth check in demo mode
 
     setUploading(true)
     try {
@@ -52,7 +50,8 @@ export function GPXUpload({ onUploadSuccess }: GPXUploadProps) {
       onUploadSuccess()
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Error uploading GPX file. Please try again.')
+      console.error('Error details:', error.message)
+      alert(`Error uploading GPX file: ${error.message}. Please check console for details.`)
     } finally {
       setUploading(false)
     }
