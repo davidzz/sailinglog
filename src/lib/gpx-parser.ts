@@ -36,10 +36,9 @@ export function calculateStats(trackPoints: TrackPoint[]) {
   console.log('Calculating stats for', trackPoints.length, 'points')
   
   let totalDistance = 0
-  let maxSpeed = 0
-  let totalSpeed = 0
-  let speedCount = 0
+  const speeds: number[] = []
   
+  // Calculate speeds with better filtering
   for (let i = 1; i < trackPoints.length; i++) {
     const prev = trackPoints[i - 1]
     const curr = trackPoints[i]
@@ -48,21 +47,44 @@ export function calculateStats(trackPoints: TrackPoint[]) {
     totalDistance += distance
     
     const timeDiff = (curr.time.getTime() - prev.time.getTime()) / 1000
-    if (timeDiff > 0) {
-      const speed = (distance / timeDiff) * 3.6
-      if (speed > 0 && speed < 100) {
-        totalSpeed += speed
-        speedCount++
-        maxSpeed = Math.max(maxSpeed, speed)
+    
+    // Only calculate speed if we have a reasonable time gap (5-60 seconds)
+    // This helps filter out GPS noise from very close points
+    if (timeDiff >= 5 && timeDiff <= 60) {
+      // Convert m/s to knots: (distance in meters / time in seconds) * 1.94384
+      const speedKnots = (distance / timeDiff) * 1.94384
+      
+      // Filter out unrealistic speeds and very low speeds (GPS drift)
+      if (speedKnots >= 0.5 && speedKnots <= 25) { // Reasonable sailing speeds
+        speeds.push(speedKnots)
       }
     }
   }
   
+  // Calculate smoothed max speed using 95th percentile to avoid GPS spikes
+  let maxSpeed = 0
+  let avgSpeed = 0
+  
+  if (speeds.length > 0) {
+    speeds.sort((a, b) => a - b)
+    
+    // Use 95th percentile as max speed to filter out GPS spikes
+    const percentile95Index = Math.floor(speeds.length * 0.95)
+    maxSpeed = speeds[percentile95Index] || 0
+    
+    // Average of all valid speeds
+    avgSpeed = speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length
+  }
+  
   const duration = (trackPoints[trackPoints.length - 1].time.getTime() - trackPoints[0].time.getTime()) / 1000
-  const avgSpeed = speedCount > 0 ? totalSpeed / speedCount : 0
+  
+  // Convert distance from meters to nautical miles (1 nautical mile = 1852 meters)
+  const distanceNauticalMiles = totalDistance / 1852
+  
+  console.log(`Calculated stats: ${speeds.length} valid speed readings, max: ${maxSpeed.toFixed(1)} kts, avg: ${avgSpeed.toFixed(1)} kts`)
   
   return {
-    distance: totalDistance / 1000,
+    distance: distanceNauticalMiles,
     duration,
     maxSpeed,
     avgSpeed

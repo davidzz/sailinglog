@@ -1,13 +1,70 @@
 'use client'
 
-import { PerformanceMetrics } from '@/lib/analytics'
+import { SailingSession } from '@/types'
+import { useMemo } from 'react'
 
 interface PerformanceInsightsProps {
-  metrics: PerformanceMetrics
+  session: SailingSession
   className?: string
 }
 
-export function PerformanceInsights({ metrics, className = '' }: PerformanceInsightsProps) {
+export function PerformanceInsights({ session, className = '' }: PerformanceInsightsProps) {
+  const metrics = useMemo(() => {
+    // Calculate basic performance metrics from track points
+    const trackPoints = session.trackPoints
+    if (trackPoints.length < 2) return null
+
+    let totalTurns = 0
+    let previousBearing = 0
+    
+    // Simple turn detection
+    for (let i = 1; i < trackPoints.length - 1; i++) {
+      const bearing = calculateBearing(trackPoints[i-1], trackPoints[i])
+      if (previousBearing !== 0) {
+        const bearingDiff = Math.abs(bearing - previousBearing)
+        if (bearingDiff > 30 && bearingDiff < 330) { // Significant turn
+          totalTurns++
+        }
+      }
+      previousBearing = bearing
+    }
+
+    // Calculate speed distribution
+    const speeds = trackPoints
+      .map(point => point.speed || 0)
+      .filter(speed => speed > 0)
+    
+    const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0
+    const maxSpeed = Math.max(...speeds, 0)
+    
+    return {
+      totalTurns,
+      avgSpeed,
+      maxSpeed,
+      trackPoints: trackPoints.length,
+      duration: session.duration,
+      distance: session.distance
+    }
+  }, [session])
+
+  const calculateBearing = (point1: any, point2: any) => {
+    const lat1 = point1.lat * Math.PI / 180
+    const lat2 = point2.lat * Math.PI / 180
+    const deltaLon = (point2.lon - point1.lon) * Math.PI / 180
+    
+    const x = Math.sin(deltaLon) * Math.cos(lat2)
+    const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon)
+    
+    return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360
+  }
+
+  if (!metrics) {
+    return (
+      <div className={`bg-white rounded-lg p-4 shadow-sm ${className}`}>
+        <p className="text-gray-500">Not enough data for performance analysis</p>
+      </div>
+    )
+  }
   return (
     <div className={`bg-white rounded-lg p-4 shadow-sm ${className}`}>
       <h3 className="text-lg font-semibold mb-3 flex items-center">
@@ -19,69 +76,59 @@ export function PerformanceInsights({ metrics, className = '' }: PerformanceInsi
       
       <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
         <div>
-          <span className="text-gray-600">Tack Efficiency</span>
-          <div className="font-medium">{metrics.efficiency.toFixed(1)}%</div>
+          <span className="text-gray-600">Track Points</span>
+          <div className="font-medium">{metrics.trackPoints}</div>
         </div>
         
         <div>
-          <span className="text-gray-600">Tacks/Jibes</span>
-          <div className="font-medium">{metrics.tacks}/{metrics.jibes}</div>
+          <span className="text-gray-600">Direction Changes</span>
+          <div className="font-medium">{metrics.totalTurns}</div>
         </div>
         
         <div>
-          <span className="text-gray-600">Port Time</span>
-          <div className="font-medium">{metrics.timeOnPort.toFixed(1)} min</div>
+          <span className="text-gray-600">Avg Speed</span>
+          <div className="font-medium">{metrics.avgSpeed.toFixed(1)} kts</div>
         </div>
         
         <div>
-          <span className="text-gray-600">Starboard Time</span>
-          <div className="font-medium">{metrics.timeOnStarboard.toFixed(1)} min</div>
+          <span className="text-gray-600">Max Speed</span>
+          <div className="font-medium">{metrics.maxSpeed.toFixed(1)} kts</div>
         </div>
         
-        {metrics.avgSpeedUpwind > 0 && (
-          <>
-            <div>
-              <span className="text-gray-600">Upwind Speed</span>
-              <div className="font-medium">{metrics.avgSpeedUpwind.toFixed(1)} kts</div>
-            </div>
-            
-            <div>
-              <span className="text-gray-600">Upwind VMG</span>
-              <div className="font-medium">{metrics.vmgUpwind.toFixed(1)} kts</div>
-            </div>
-          </>
-        )}
+        <div>
+          <span className="text-gray-600">Distance</span>
+          <div className="font-medium">{metrics.distance.toFixed(1)} nm</div>
+        </div>
         
-        {metrics.avgSpeedDownwind > 0 && (
-          <>
-            <div>
-              <span className="text-gray-600">Downwind Speed</span>
-              <div className="font-medium">{metrics.avgSpeedDownwind.toFixed(1)} kts</div>
-            </div>
-            
-            <div>
-              <span className="text-gray-600">Downwind VMG</span>
-              <div className="font-medium">{metrics.vmgDownwind.toFixed(1)} kts</div>
-            </div>
-          </>
-        )}
+        <div>
+          <span className="text-gray-600">Duration</span>
+          <div className="font-medium">{Math.floor(metrics.duration / 60)}m {metrics.duration % 60}s</div>
+        </div>
       </div>
       
-      {metrics.insights.length > 0 && (
-        <div className="border-t border-gray-100 pt-3">
-          <h4 className="font-medium text-gray-900 mb-2">Insights</h4>
-          <ul className="space-y-1 text-sm text-gray-600">
-            {metrics.insights.map((insight, index) => (
-              <li key={index} className="flex items-start">
-                <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                {insight}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="border-t border-gray-100 pt-3">
+        <h4 className="font-medium text-gray-900 mb-2">Performance Insights</h4>
+        <ul className="space-y-1 text-sm text-gray-600">
+          <li className="flex items-start">
+            <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            {metrics.totalTurns > 20 ? 'High activity session with frequent direction changes' : 'Steady sailing with minimal course changes'}
+          </li>
+          <li className="flex items-start">
+            <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            {metrics.avgSpeed > 15 ? 'Great average speed - conditions were favorable' : 'Moderate speeds - typical for recreational sailing'}
+          </li>
+          <li className="flex items-start">
+            <svg className="w-4 h-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            Data quality: {metrics.trackPoints > 100 ? 'Excellent GPS tracking' : 'Basic GPS tracking'}
+          </li>
+        </ul>
+      </div>
     </div>
   )
 }

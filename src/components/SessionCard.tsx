@@ -35,7 +35,7 @@ export function SessionCard({ session, onClick }: SessionCardProps) {
         
         <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
           <div>
-            <span className="block text-gray-900 font-medium">{session.distance.toFixed(1)} km</span>
+            <span className="block text-gray-900 font-medium">{session.distance.toFixed(1)} nm</span>
             <span>Distance</span>
           </div>
           

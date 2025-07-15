@@ -4,13 +4,12 @@ import { useState } from 'react'
 
 interface ShareButtonProps {
   sessionId: string
-  isShared: boolean
-  onShare: (shareUrl: string) => void
-  onUnshare: () => void
+  isPublic: boolean
 }
 
-export function ShareButton({ sessionId, isShared, onShare, onUnshare }: ShareButtonProps) {
+export function ShareButton({ sessionId, isPublic }: ShareButtonProps) {
   const [loading, setLoading] = useState(false)
+  const [shared, setShared] = useState(isPublic)
 
   const handleShare = async () => {
     setLoading(true)
@@ -21,7 +20,10 @@ export function ShareButton({ sessionId, isShared, onShare, onUnshare }: ShareBu
 
       if (response.ok) {
         const { shareUrl } = await response.json()
-        onShare(shareUrl)
+        setShared(true)
+        // Copy to clipboard
+        navigator.clipboard.writeText(shareUrl)
+        alert('Share link copied to clipboard!')
       } else {
         alert('Failed to create share link')
       }
@@ -41,7 +43,8 @@ export function ShareButton({ sessionId, isShared, onShare, onUnshare }: ShareBu
       })
 
       if (response.ok) {
-        onUnshare()
+        setShared(false)
+        alert('Session is no longer public')
       } else {
         alert('Failed to remove share link')
       }
@@ -55,15 +58,15 @@ export function ShareButton({ sessionId, isShared, onShare, onUnshare }: ShareBu
 
   return (
     <button
-      onClick={isShared ? handleUnshare : handleShare}
+      onClick={shared ? handleUnshare : handleShare}
       disabled={loading}
-      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-        isShared
+      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+        shared
           ? 'bg-red-100 text-red-700 hover:bg-red-200'
-          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+          : 'bg-blue-600 text-white hover:bg-blue-700'
       } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
-      {loading ? '...' : isShared ? 'Unshare' : 'Share'}
+      {loading ? 'Loading...' : shared ? 'Make Private' : 'Share Session'}
     </button>
   )
 }

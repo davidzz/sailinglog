@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { SailingSession } from '@/types'
 import { SessionCard } from './SessionCard'
 import { GPXUpload } from './GPXUpload'
+import { SessionDetail } from './SessionDetail'
 
 export function Dashboard() {
   // Mock user for demo purposes
@@ -11,6 +12,7 @@ export function Dashboard() {
   const [sessions, setSessions] = useState<SailingSession[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload] = useState(false)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
 
   const fetchSessions = async () => {
     try {
@@ -40,6 +42,16 @@ export function Dashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
       </div>
+    )
+  }
+
+  // Show session detail if one is selected
+  if (selectedSessionId) {
+    return (
+      <SessionDetail 
+        sessionId={selectedSessionId} 
+        onBack={() => setSelectedSessionId(null)} 
+      />
     )
   }
 
@@ -116,10 +128,7 @@ export function Dashboard() {
                 <SessionCard
                   key={session.id}
                   session={session}
-                  onClick={() => {
-                    // TODO: Navigate to session detail page
-                    console.log('Session clicked:', session.id)
-                  }}
+                  onClick={() => setSelectedSessionId(session.id)}
                 />
               ))}
             </div>
